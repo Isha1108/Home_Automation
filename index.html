@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Device Usage Analysis</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body,
+            html {
+                height: 100%;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+            .chart-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-wrap: nowrap; /* Prevent wrapping to ensure side-by-side layout */
+                width: 100%; /* Use full width of the viewport */
+            }
+            canvas {
+                max-width: 600px; /* Adjust width as necessary */
+                height: 400px; /* Adjust height as necessary */
+            }
+            #loadButton {
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+                position: absolute;
+                top: 20px; /* Position button at the top of the page */
+            }
+            h1,
+            h2 {
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <button id="loadButton">Load Graphs</button>
+        <div class="chart-container">
+            <div>
+                <h2>Last 5 Hours (Bar Chart)</h2>
+                <canvas id="hourlyUsageChart"></canvas>
+            </div>
+            <div>
+                <h2>Total Usage (Pie Chart)</h2>
+                <canvas id="totalUsageChart"></canvas>
+            </div>
+        </div>
+        <script>
+            document
+                .getElementById("loadButton")
+                .addEventListener("click", function () {
+                    const chartContainer =
+                        document.querySelector(".chart-container");
+                    chartContainer.style.display = "flex"; // Show the container
+                    this.style.display = "none"; // Hide the button after clicking
+
+                    const ctxBar = document
+                        .getElementById("hourlyUsageChart")
+                        .getContext("2d");
+                    const ctxPie = document
+                        .getElementById("totalUsageChart")
+                        .getContext("2d");
+
+                    fetch("/api/data")
+                        .then((response) => response.json())
+                        .then((data) => {
+                            const hours = data.hourly.map((d) => d.Hour);
+                            const devices = [
+                                "Red LED",
+                                "Yellow LED",
+                                "Green LED",
+                                "Motor Status",
+                            ];
+                            const colors = {
+                                "Red LED": "rgba(255, 99, 132, 0.7)", // Red
+                                "Yellow LED": "rgba(255, 206, 86, 0.7)", // Yellow
+                                "Green LED": "rgba(75, 192, 192, 0.7)", // Green
+                                "Motor Status": "rgba(54, 162, 235, 0.7)", // Blue
+                            };
+
+                            const datasetsBar = devices.map((device) => ({
+                                label: `${device} Minutes`,
+                                data: data.hourly.map((d) => d[device]),
+                                backgroundColor: colors[device],
+                                borderColor: colors[device],
+                                borderWidth: 1,
+                            }));
+
+                            new Chart(ctxBar, {
+                                type: "bar",
+                                data: {
+                                    labels: hours,
+                                    datasets: datasetsBar,
+                                },
+                                options: {
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                        },
+                                    },
+                                },
+                            });
+
+                            new Chart(ctxPie, {
+                                type: "pie",
+                                data: {
+                                    labels: devices,
+                                    datasets: [
+                                        {
+                                            label: "Total Usage in Minutes",
+                                            data: devices.map(
+                                                (device) => data.totals[device]
+                                            ),
+                                            backgroundColor: devices.map(
+                                                (device) => colors[device]
+                                            ),
+                                            hoverOffset: 4,
+                                        },
+                                    ],
+                                },
+                            });
+                        })
+                        .catch((error) =>
+                            console.error("Error fetching data:", error)
+                        );
+                });
+        </script>
+    </body>
+</html>
